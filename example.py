@@ -10,7 +10,7 @@ from IPython.display import display
 
 # ------------------------------------------------------------------------ Environment Setting
 Env = Environment(
-    railLength=5.2,
+    # railLength=5.2,
     latitude=32.990254,
     longitude=-106.974998,
     elevation=1400
@@ -30,36 +30,40 @@ Env = Environment(
 
 URL = 'https://rucsoundings.noaa.gov/get_raobs.cgi?data_source=RAOB&latest=latest&start_year=2019&start_month_name=Feb&start_mday=5&start_hour=12&start_min=0&n_hrs=1.0&fcst_len=shortest&airport=83779&text=Ascii%20text%20%28GSD%20format%29&hydrometeors=false&start=latest'
 
-Env.setAtmosphericModel(type='NOAARucSounding', file=URL)
+Env.set_atmospheric_model(type='NOAARucSounding', file=URL)
 
 # --------------------------------------------------------------------------Motor Setting
 Pro75M1670 = SolidMotor(
-    thrustSource="Cesaroni_M1670.eng",
-    burnOut=3.9,
-    grainNumber=5,
-    grainSeparation=5/1000,
-    grainDensity=1815,
-    grainOuterRadius=33/1000,
-    grainInitialInnerRadius=15/1000,
-    grainInitialHeight=120/1000,
-    nozzleRadius=33/1000,
-    throatRadius=11/1000,
-    interpolationMethod='linear'
+    thrust_source="Cesaroni_M1670.eng",
+    # burnOut=3.9,
+    dry_mass=1.815,
+    dry_inertia=(0.125, 0.125, 0.002),
+    nozzle_radius=33 / 1000,
+    grain_number=5,
+    grain_density=1815,
+    grain_outer_radius=33 / 1000,
+    grain_initial_inner_radius=15 / 1000,
+    grain_initial_height=120 / 1000,
+    grain_separation=5 / 1000,
+    grains_center_of_mass_position=0.397,
+    center_of_dry_mass_position=0.317,
+    nozzle_position=0,
+    burn_time=3.9,
+    throat_radius=11 / 1000,
+    coordinate_system_orientation="nozzle_to_combustion_chamber",
 )
 
 # Pro75M1670.info()
 
 # ------------------------------------------------------------------------Initializing Rocket
-Calisto = Rocket(
-    motor=Pro75M1670,
-    radius=127/2000,
-    mass=19.197-2.956,
-    inertiaI=6.60,
-    inertiaZ=0.0351,
-    distanceRocketNozzle=-1.255,
-    distanceRocketPropellant=-0.85704,
-    powerOffDrag='powerOffDragCurve.csv',
-    powerOnDrag='powerOffDragCurve.csv'
+calisto = Rocket(
+    radius=127 / 2000,
+    mass=14.426,
+    inertia=(6.321, 6.321, 0.034),
+    power_off_drag="../data/calisto/powerOffDragCurve.csv",
+    power_on_drag="../data/calisto/powerOnDragCurve.csv",
+    center_of_mass_without_motor=0,
+    coordinate_system_orientation="tail_to_nose",
 )
 
 Calisto.setRailButtons([0.2, -0.5])

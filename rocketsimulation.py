@@ -1,71 +1,105 @@
-from rocketpy import Environment, Rocket, SolidMotor, Flight
+# Using RocketPy Library
 
-Env = Environment(
-    railLength=5.2,
+from rocketpy import Environment, Rocket, LiquidMotor, Flight
+from math import exp
+from rocketpy import Fluid, LiquidMotor, CylindricalTank, MassFlowRateBasedTank
+
+import datetime
+
+#Create an environment object
+env = Environment(
     latitude=32.990254,
     longitude=-106.974998,
     elevation=1400,
-    date=(2021, 9, 4, 12) # Tomorrow's date in year, month, day, hour UTC format
 )
 
-Env.setAtmosphericModel(type='Forecast', file='GFS')
+tomorrow = datetime.date.today() + datetime.timedelta(days=1)
 
-Pro75M1670 = SolidMotor(
-    thrustSource="./RocketPy/RocketPy/data/motors/Cesaroni_M1670.eng",
-    burnOut=3.9,
-    grainNumber=5,
-    grainSeparation=5/1000,
-    grainDensity=1815,
-    grainOuterRadius=33/1000,
-    grainInitialInnerRadius=15/1000,
-    grainInitialHeight=120/1000,
-    nozzleRadius=33/1000,
-    throatRadius=11/1000,
-    interpolationMethod='linear'
+env.set_date(
+  (tomorrow.year, tomorrow.month, tomorrow.day, 12), timezone="America/Denver"
+) # Tomorrow's date in year, month, day, hour UTC format
+
+env.set_atmospheric_model(type='Forecast', file='GFS')
+
+example_liquid = LiquidMotor(
+    thrust_source=lambda t: 4000 - 100 * t**2,
+    dry_mass=2,
+    dry_inertia=(0.125, 0.125, 0.002),
+    nozzle_radius=0.075,
+    center_of_dry_mass_position=1.75,
+    nozzle_position=0,
+    burn_time=5,
+    coordinate_system_orientation="nozzle_to_combustion_chamber",
+)
+# example_liquid.add_tank(tank=oxidizer_tank, position=1.0)
+# example_liquid.add_tank(tank=fuel_tank, position=2.5)
+
+#Create a rocket object
+calisto = Rocket(
+    radius=0.0635,
+    mass=14.426,  # without motor
+    inertia=(6.321, 6.321, 0.034),
+    power_off_drag=.02,
+    power_on_drag=.03,
+    center_of_mass_without_motor=0,
+    coordinate_system_orientation="tail_to_nose",
 )
 
-Pro75M1670.info()
-
-Calisto = Rocket(
-    motor=Pro75M1670,
-    radius=127/2000,
-    mass=19.197-2.956,
-    inertiaI=6.60,
-    inertiaZ=0.0351,
-    distanceRocketNozzle=-1.255,
-    distanceRocketPropellant=-0.85704,
-    powerOffDrag='./RocketPy/RocketPy/data/calisto/powerOffDragCurve.csv',
-    powerOnDrag='./RocketPy/RocketPy/data/calisto/powerOnDragCurve.csv'
+buttons = calisto.set_rail_buttons(
+    upper_button_position=0.0818,
+    lower_button_position=-0.6182,
+    angular_position=45,
 )
 
-Calisto.setRailButtons([0.2, -0.5])
+calisto.add_motor(example_liquid, position=-1.255)
 
-NoseCone = Calisto.addNose(length=0.55829, kind="vonKarman", distanceToCM=0.71971)
+nose = calisto.add_nose(
+    length=0.55829, kind="vonKarman", position=1.278
+)
 
-FinSet = Calisto.addFins(4, span=0.100, rootChord=0.120, tipChord=0.040, distanceToCM=-1.04956)
+fins = calisto.add_trapezoidal_fins(
+    n=4,
+    root_chord=0.120,
+    tip_chord=0.040,
+    span=0.100,
+    sweep_length=None,
+    cant_angle=0,
+    position=-1.04956,
+)
 
-Tail = Calisto.addTail(topRadius=0.0635, bottomRadius=0.0435, length=0.060, distanceToCM=-1.194656)
+tail = calisto.add_tail(
+    top_radius=0.0635, bottom_radius=0.0435, length=0.060, position=-1.194656
+)
 
-def drogueTrigger(p, y):
-    return True if y[5] < 0 else False
+#Add parachute to rocket object
+main = calisto.add_parachute(
+    name="main",
+    cd_s=10.0,
+    trigger=800,  # ejection altitude in meters
+    sampling_rate=105,
+    lag=1.5,
+    noise=(0, 8.3, 0.5),
+)
 
-def mainTrigger(p, y):
-    return True if y[5] < 0 and y[2] < 800 else False
+drogue = calisto.add_parachute(
+    name="drogue",
+    cd_s=1.0,
+    trigger="apogee",  # ejection at apogee
+    sampling_rate=105,
+    lag=1.5,
+    noise=(0, 8.3, 0.5),
+)
 
-Main = Calisto.addParachute('Main',
-                            CdS=10.0,
-                            trigger=mainTrigger,
-                            samplingRate=105,
-                            lag=1.5,
-                            noise=(0, 8.3, 0.5))
+#Create flight object
+test_flight = Flight(
+  rocket=calisto, environment=env, rail_length=5.2, inclination=85, heading=0
+)
 
-Drogue = Calisto.addParachute('Drogue',
-                              CdS=1.0,
-                              trigger=drogueTrigger,
-                              samplingRate=105,
-                              lag=1.5,
-                              noise=(0, 8.3, 0.5))
+#Get summary of results
+test_flight.info()
 
-TestFlight = Flight(rocket=Calisto, environment=Env, inclination=85, heading=0)
+#Get summary of all available results
+test_flight.all_info()
 
-TestFlight.allInfo()
+#Export KML file to view on Google Earth
+test_flight.export_kml(file_name="test_flight.kml")
